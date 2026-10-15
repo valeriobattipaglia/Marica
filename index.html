@@ -10,7 +10,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--stage)}
 body{font-family:Georgia,"Times New Roman",serif}
-.viewer{position:relative;width:100vw;height:100dvh;display:grid;place-items:center;overflow:hidden;background:var(--stage)}
+.viewer{position:relative;width:100vw;height:100dvh;display:grid;place-items:center;overflow:hidden;background:var(--stage);touch-action:none}
 .book-frame{position:relative;width:min(96vw,130dvh);height:min(92dvh,67.88vw);max-height:100dvh;filter:drop-shadow(0 22px 42px #0008)}
 .book{position:absolute;left:0;top:0;width:min(96vw,130dvh);height:min(92dvh,67.88vw);max-height:100dvh;touch-action:none}
 .book-frame.cover{width:min(48vw,65dvh);overflow:hidden}
@@ -22,9 +22,6 @@ body{font-family:Georgia,"Times New Roman",serif}
 .nav:after{content:"";width:38px;height:38px;border-top:1.5px solid currentColor;border-right:1.5px solid currentColor;filter:drop-shadow(0 1px 3px #0008)}
 .prev{left:0}.prev:after{transform:rotate(-135deg)}.next{right:0}.next:after{transform:rotate(45deg)}
 @media(max-width:700px){
- .book-frame,.book{width:min(96vw,70dvh);height:min(92dvh,133vw);max-height:92dvh}
- .book-frame.cover{width:min(96vw,70dvh)}
- .book-frame.cover .book{left:0}
  .nav{width:10vw;min-width:30px;opacity:.34}
  .nav:after{width:17px;height:17px}
 }
@@ -60,7 +57,7 @@ body{font-family:Georgia,"Times New Roman",serif}
     maxHeight:1200,
     autoSize:false,
     showCover:true,
-    usePortrait:true,
+    usePortrait:false,
     flippingTime:650,
     drawShadow:true,
     maxShadowOpacity:.48,
@@ -68,7 +65,7 @@ body{font-family:Georgia,"Times New Roman",serif}
     swipeDistance:30,
     clickEventForward:false,
     disableFlipByClick:true,
-    useMouseEvents:true
+    useMouseEvents:false
   });
   function updateControls(index=pageFlip.getCurrentPageIndex()){
     const portrait=pageFlip.getOrientation()==='portrait';
@@ -120,6 +117,24 @@ body{font-family:Georgia,"Times New Roman",serif}
   pageFlip.loadFromImages(Array.from({length:TOTAL},(_,index)=>src(index+1)));
   document.getElementById('next').addEventListener('click',()=>pageFlip.flipNext('top'));
   document.getElementById('prev').addEventListener('click',()=>pageFlip.flipPrev('top'));
+  let gestureStart=null;
+  const viewer=document.querySelector('.viewer');
+  viewer.addEventListener('pointerdown',event=>{
+    if(event.pointerType==='mouse' && event.button!==0) return;
+    if(event.target.closest('button')) return;
+    gestureStart={x:event.clientX,y:event.clientY,id:event.pointerId};
+    viewer.setPointerCapture(event.pointerId);
+  });
+  viewer.addEventListener('pointerup',event=>{
+    if(!gestureStart || gestureStart.id!==event.pointerId) return;
+    const dx=event.clientX-gestureStart.x,dy=event.clientY-gestureStart.y;
+    gestureStart=null;
+    if(Math.abs(dx)>55 && Math.abs(dx)>Math.abs(dy)*1.5){
+      if(dx<0) pageFlip.flipNext('top');
+      else pageFlip.flipPrev('top');
+    }
+  });
+  viewer.addEventListener('pointercancel',()=>{gestureStart=null;});
   document.addEventListener('keydown',e=>{
     if(e.target.closest('button,input,textarea,select')) return;
     if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();pageFlip.flipNext('top');}
