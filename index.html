@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#171613">
+<title>LEIB — Fashion, Art & Culture</title>
+<style>
+:root{color-scheme:dark;--paper:#f4f0e8;--ink:#171613}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#171613}
+body{display:flex;align-items:center;justify-content:center;font-family:Georgia,"Times New Roman",serif}
+.viewer{position:relative;width:100vw;height:100dvh;display:flex;align-items:center;justify-content:center;perspective:1800px;overflow:hidden}
+.book{position:relative;display:flex;align-items:stretch;justify-content:center;width:min(96vw,150vh);height:min(92dvh,68vw);max-height:100dvh;transform-style:preserve-3d;filter:drop-shadow(0 18px 38px #0008);transition:transform .15s ease}
+.page{position:relative;flex:1;min-width:0;height:100%;background:var(--paper);overflow:hidden;backface-visibility:hidden}
+.page img{display:block;width:100%;height:100%;object-fit:contain;background:var(--paper);user-select:none;-webkit-user-drag:none}
+.page.left{box-shadow:inset -10px 0 14px -15px #000}
+.page.right{box-shadow:inset 10px 0 14px -15px #000}
+.page.left img{object-position:right center}
+.page.right img{object-position:left center}
+.gutter{position:absolute;top:0;bottom:0;left:50%;width:1px;background:#0001;z-index:3;pointer-events:none}
+.nav{position:fixed;z-index:10;top:0;bottom:0;width:12vw;min-width:42px;max-width:150px;border:0;background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;opacity:.0;transition:opacity .2s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.nav:hover,.nav:focus-visible{opacity:.9;outline:none}
+.nav:after{content:"";width:38px;height:38px;border-top:1.5px solid currentColor;border-right:1.5px solid currentColor;filter:drop-shadow(0 1px 3px #0008)}
+.prev{left:0}.prev:after{transform:rotate(-135deg)}.next{right:0}.next:after{transform:rotate(45deg)}
+/* On touch devices the controls remain discreetly visible. */
+@media(hover:none){.nav{opacity:.48}.nav:after{width:23px;height:23px}}
+@media(max-width:700px){
+ .book{width:min(96vw,58dvh);height:min(92dvh,155vw)}
+ .page.left{display:none}
+ .gutter{display:none}
+ .page.right{box-shadow:none}
+ .page img{object-fit:contain}
+ .nav{width:13vw;min-width:34px}
+ .nav:after{width:20px;height:20px}
+}
+@media(prefers-reduced-motion:reduce){.book{transition:none}.nav{transition:none}}
+</style>
+</head>
+<body>
+<main class="viewer" aria-label="Rivista LEIB">
+  <div class="book" id="book">
+    <div class="page left"><img id="leftPage" alt="Pagina della rivista LEIB" draggable="false"></div>
+    <div class="page right"><img id="rightPage" alt="Pagina della rivista LEIB" draggable="false"></div>
+    <div class="gutter"></div>
+  </div>
+  <button class="nav prev" id="prev" aria-label="Pagina precedente" title="Pagina precedente"></button>
+  <button class="nav next" id="next" aria-label="Pagina successiva" title="Pagina successiva"></button>
+</main>
+<script>
+(() => {
+  const TOTAL = 128;
+  let page = 1, startX = null, startY = null, busy = false;
+  const left = document.getElementById('leftPage');
+  const right = document.getElementById('rightPage');
+  const book = document.getElementById('book');
+  const leftWrap = left.parentElement;
+  const mobile = () => matchMedia('(max-width:700px)').matches;
+  const src = n => `pages/page-${String(n).padStart(3,'0')}.jpg`;
+  function render(){
+    if(mobile()){
+      leftWrap.style.display='none';
+      right.src=src(page);
+      right.alt=`Pagina ${page} di ${TOTAL}`;
+    } else {
+      leftWrap.style.display='block';
+      left.src=src(page);
+      right.src=src(Math.min(page+1,TOTAL));
+      left.alt=`Pagina ${page} di ${TOTAL}`;
+      right.alt=`Pagina ${Math.min(page+1,TOTAL)} di ${TOTAL}`;
+    }
+    document.getElementById('prev').style.visibility=page===1?'hidden':'visible';
+    document.getElementById('next').style.visibility=page>=TOTAL-(mobile()?0:1)?'hidden':'visible';
+  }
+  function turn(dir){
+    if(busy) return;
+    const step=mobile()?1:2;
+    const target=Math.max(1,Math.min(TOTAL-(step===2?1:0),page+dir*step));
+    if(target===page) return;
+    busy=true;
+    book.style.transition='transform .24s ease, opacity .24s ease';
+    book.style.transform=`rotateY(${dir>0?-2:2}deg) scale(.992)`;
+    book.style.opacity='.78';
+    setTimeout(()=>{
+      page=target; render();
+      book.style.transform='rotateY(0deg) scale(1)';
+      book.style.opacity='1';
+      setTimeout(()=>{busy=false;},240);
+    },140);
+  }
+  document.getElementById('next').addEventListener('click',()=>turn(1));
+  document.getElementById('prev').addEventListener('click',()=>turn(-1));
+  document.addEventListener('keydown',e=>{
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();turn(1);}
+    if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();turn(-1);}
+    if(e.key==='Home'){page=1;render();}
+    if(e.key==='End'){page=mobile()?TOTAL:TOTAL-1;render();}
+  });
+  const viewer=document.querySelector('.viewer');
+  viewer.addEventListener('touchstart',e=>{const t=e.changedTouches[0];startX=t.clientX;startY=t.clientY;},{passive:true});
+  viewer.addEventListener('touchend',e=>{
+    if(startX===null)return;
+    const t=e.changedTouches[0], dx=t.clientX-startX, dy=t.clientY-startY;
+    if(Math.abs(dx)>45 && Math.abs(dx)>Math.abs(dy)*1.2) turn(dx<0?1:-1);
+    startX=startY=null;
+  },{passive:true});
+  let resizeTimer;
+  window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(render,100);});
+  render();
+})();
+</script>
+</body>
+</html>
