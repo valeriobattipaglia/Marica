@@ -10,15 +10,21 @@
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--stage)}
 body{font-family:Georgia,"Times New Roman",serif}
-.viewer{position:relative;width:100vw;height:100dvh;display:grid;place-items:center;overflow:hidden;background:var(--stage);touch-action:pinch-zoom}
-.book-frame{position:relative;width:min(96vw,130dvh);height:min(92dvh,67.88vw);max-height:100dvh;filter:drop-shadow(0 22px 42px #0008)}
+.viewer{position:relative;width:100vw;height:100dvh;display:grid;place-items:center;overflow:hidden;background:var(--stage);touch-action:none}
+.book-frame{position:relative;width:min(96vw,130dvh);height:min(92dvh,67.88vw);max-height:100dvh;filter:drop-shadow(0 22px 42px #0008);transform-origin:center center;will-change:transform}
 .book{position:absolute;left:0;top:0;width:min(96vw,130dvh);height:min(92dvh,67.88vw);max-height:100dvh;touch-action:pinch-zoom}
+.mag-page{display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f4f0e8}
+.mag-page img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}
 .book-frame.cover{width:min(48vw,65dvh);overflow:hidden}
 .book-frame.cover .book{left:-100%}
 .nav{position:fixed;z-index:10;top:0;bottom:0;width:12vw;min-width:42px;max-width:150px;border:0;background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;opacity:.42;transition:opacity .2s;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .nav:hover,.nav:focus-visible{opacity:.9;outline:none}
 .sound-toggle{position:fixed;z-index:12;right:12px;bottom:12px;border:1px solid #ffffff50;border-radius:999px;padding:8px 12px;background:#171613bb;color:#fff;font:12px system-ui,sans-serif;cursor:pointer;opacity:.72;backdrop-filter:blur(8px)}.sound-toggle:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .page-status{position:fixed;z-index:10;left:50%;bottom:16px;transform:translateX(-50%);color:#fff;font:12px system-ui,sans-serif;text-shadow:0 1px 3px #000;pointer-events:none}
+.zoom-controls{position:fixed;z-index:12;left:12px;bottom:12px;display:flex;align-items:center;gap:4px;padding:4px;border:1px solid #ffffff45;border-radius:6px;background:#171613cc;backdrop-filter:blur(8px)}
+.zoom-controls button{min-width:36px;height:34px;border:0;border-radius:3px;background:transparent;color:#fff;font:20px/1 system-ui,sans-serif;cursor:pointer}
+.zoom-controls button:hover,.zoom-controls button:focus-visible{background:#ffffff22;outline:none}
+.zoom-controls output{min-width:44px;color:#fff;text-align:center;font:11px system-ui,sans-serif}
 .nav:after{content:"";width:38px;height:38px;border-top:1.5px solid currentColor;border-right:1.5px solid currentColor;filter:drop-shadow(0 1px 3px #0008)}
 .prev{left:0}.prev:after{transform:rotate(-135deg)}.next{right:0}.next:after{transform:rotate(45deg)}
 @media(max-width:700px){
@@ -26,6 +32,8 @@ body{font-family:Georgia,"Times New Roman",serif}
  .book-frame.cover{width:48vw}
  .nav{width:10vw;min-width:30px;opacity:.34}
  .nav:after{width:17px;height:17px}
+ .zoom-controls{left:8px;bottom:8px}
+ .zoom-controls button{min-width:34px;height:34px}
 }
 @media(prefers-reduced-motion:reduce){.nav{transition:none}}
 </style>
@@ -38,6 +46,12 @@ body{font-family:Georgia,"Times New Roman",serif}
   <button class="nav prev" id="prev" aria-label="Pagina precedente" title="Pagina precedente"></button>
   <button class="nav next" id="next" aria-label="Pagina successiva" title="Pagina successiva"></button>
   <output class="page-status" id="pageStatus" aria-live="polite">1 / 128</output>
+  <div class="zoom-controls" aria-label="Zoom pagina">
+    <button id="zoomOut" type="button" aria-label="Riduci zoom" title="Riduci zoom">−</button>
+    <output id="zoomLevel" aria-live="polite">100%</output>
+    <button id="zoomIn" type="button" aria-label="Ingrandisci" title="Ingrandisci">+</button>
+    <button id="zoomReset" type="button" aria-label="Adatta allo schermo" title="Adatta allo schermo">100%</button>
+  </div>
   <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="false">Suono: off</button>
 </main>
 <script src="vendor/page-flip.browser.min.js"></script>
@@ -48,7 +62,22 @@ body{font-family:Georgia,"Times New Roman",serif}
   let soundContext = null;
   const bookFrame = document.getElementById('bookFrame');
   const book = document.getElementById('book');
-  const src = n => `pages/page-${String(n).padStart(3,'0')}.jpg`;
+  const src = (n,highResolution=false) => highResolution
+      ? `pages-hd/page-${String(n).padStart(3,'0')}.webp`
+      : `pages/page-${String(n).padStart(3,'0')}.jpg`;
+    const pageElements=Array.from({length:TOTAL},(_,index)=>{
+      const element=document.createElement('div');
+      element.className='mag-page';
+      if(index===0||index===TOTAL-1) element.dataset.density='hard';
+      const image=document.createElement('img');
+      image.src=src(index+1);
+      image.alt=`Pagina ${index+1} di ${TOTAL}`;
+      image.loading='lazy';
+      image.decoding='async';
+      image.draggable=false;
+      element.appendChild(image);
+      return element;
+    });
   const pageFlip = new St.PageFlip(book,{
     width:700,
     height:990,
@@ -75,6 +104,15 @@ body{font-family:Georgia,"Times New Roman",serif}
     document.getElementById('prev').style.visibility=index===0?'hidden':'visible';
     document.getElementById('next').style.visibility=index>=last?'hidden':'visible';
     document.getElementById('pageStatus').textContent=index===0?'1 / 128':portrait?`${index+1} / 128`:`${index+1}-${Math.min(index+2,TOTAL)} / 128`;
+  }
+  function updateVisibleImages(index=pageFlip.getCurrentPageIndex()){
+    const visible=new Set([index]);
+    if(index>0 && pageFlip.getOrientation()==='landscape' && index+1<TOTAL) visible.add(index+1);
+    pageElements.forEach((element,pageIndex)=>{
+      const image=element.querySelector('img');
+      const path=src(pageIndex+1,visible.has(pageIndex));
+      if(!image.src.endsWith(path)) image.src=path;
+    });
   }
   function syncBookSize(index){
     const cover=index===0;
@@ -109,39 +147,95 @@ body{font-family:Georgia,"Times New Roman",serif}
   pageFlip.on('flip',event=>{
     syncBookSize(event.data);
     updateControls(event.data);
+    updateVisibleImages(event.data);
     playPageSound();
   });
   pageFlip.on('changeOrientation',()=>updateControls());
   pageFlip.on('init',event=>{
     syncBookSize(event.data.page);
     updateControls(event.data.page);
+    updateVisibleImages(event.data.page);
   });
-  pageFlip.loadFromImages(Array.from({length:TOTAL},(_,index)=>src(index+1)));
+  pageFlip.loadFromHTML(pageElements);
   document.getElementById('next').addEventListener('click',()=>pageFlip.flipNext('top'));
   document.getElementById('prev').addEventListener('click',()=>pageFlip.flipPrev('top'));
-  let gestureStart=null;
-  const activePointers=new Set();
+  let gestureStart=null,pinchStart=null,panStart=null;
+  const pointers=new Map();
+  let zoomScale=1,panX=0,panY=0;
   const viewer=document.querySelector('.viewer');
+  const zoomLevel=document.getElementById('zoomLevel');
+  const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+  function clampPan(){
+    const frame=bookFrame.getBoundingClientRect();
+    const width=frame.width/zoomScale,height=frame.height/zoomScale;
+    const maxX=Math.max(0,(width*zoomScale-window.innerWidth)/2);
+    const maxY=Math.max(0,(height*zoomScale-window.innerHeight)/2);
+    panX=clamp(panX,-maxX,maxX);
+    panY=clamp(panY,-maxY,maxY);
+  }
+  function applyZoom(){
+    if(zoomScale===1) panX=panY=0;
+    clampPan();
+    bookFrame.style.transform=`translate3d(${panX}px,${panY}px,0) scale(${zoomScale})`;
+    zoomLevel.textContent=`${Math.round(zoomScale*100)}%`;
+  }
+  function setZoom(value){
+    zoomScale=clamp(value,1,3);
+    applyZoom();
+  }
+  document.getElementById('zoomIn').addEventListener('click',()=>setZoom(zoomScale+.25));
+  document.getElementById('zoomOut').addEventListener('click',()=>setZoom(zoomScale-.25));
+  document.getElementById('zoomReset').addEventListener('click',()=>setZoom(1));
   viewer.addEventListener('pointerdown',event=>{
     if(event.pointerType==='mouse' && event.button!==0) return;
     if(event.target.closest('button')) return;
-    activePointers.add(event.pointerId);
-    if(activePointers.size>1){gestureStart=null;return;}
+    pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+    viewer.setPointerCapture(event.pointerId);
+    if(pointers.size===2){
+      gestureStart=null;
+      panStart=null;
+      const pair=[...pointers.values()];
+      pinchStart={distance:Math.hypot(pair[1].x-pair[0].x,pair[1].y-pair[0].y),scale:zoomScale,centerX:(pair[0].x+pair[1].x)/2,centerY:(pair[0].y+pair[1].y)/2,panX,panY};
+      return;
+    }
+    if(zoomScale>1){
+      panStart={x:event.clientX,y:event.clientY,panX,panY};
+      return;
+    }
     gestureStart={x:event.clientX,y:event.clientY,id:event.pointerId};
   });
+  viewer.addEventListener('pointermove',event=>{
+    if(!pointers.has(event.pointerId)) return;
+    pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+    if(pinchStart && pointers.size>1){
+      const pair=[...pointers.values()];
+      const distance=Math.hypot(pair[1].x-pair[0].x,pair[1].y-pair[0].y);
+      const centerX=(pair[0].x+pair[1].x)/2,centerY=(pair[0].y+pair[1].y)/2;
+      zoomScale=clamp(pinchStart.scale*distance/pinchStart.distance,1,3);
+      panX=pinchStart.panX+centerX-pinchStart.centerX;
+      panY=pinchStart.panY+centerY-pinchStart.centerY;
+      applyZoom();
+    }else if(panStart && zoomScale>1){
+      panX=panStart.panX+event.clientX-panStart.x;
+      panY=panStart.panY+event.clientY-panStart.y;
+      applyZoom();
+    }
+  });
   viewer.addEventListener('pointerup',event=>{
-    activePointers.delete(event.pointerId);
-    if(!gestureStart || gestureStart.id!==event.pointerId || activePointers.size>0) return;
+    pointers.delete(event.pointerId);
+    if(pinchStart){pinchStart=null;gestureStart=null;panStart=null;return;}
+    if(pointers.size>0 || !gestureStart || gestureStart.id!==event.pointerId) return;
     const dx=event.clientX-gestureStart.x,dy=event.clientY-gestureStart.y;
     gestureStart=null;
-    if(Math.abs(dx)>55 && Math.abs(dx)>Math.abs(dy)*1.5){
+    panStart=null;
+    if(zoomScale===1 && Math.abs(dx)>55 && Math.abs(dx)>Math.abs(dy)*1.5){
       if(dx<0) pageFlip.flipNext('top');
       else pageFlip.flipPrev('top');
     }
   });
   viewer.addEventListener('pointercancel',event=>{
-    activePointers.delete(event.pointerId);
-    gestureStart=null;
+    pointers.delete(event.pointerId);
+    gestureStart=pinchStart=panStart=null;
   });
   document.addEventListener('keydown',e=>{
     if(e.target.closest('button,input,textarea,select')) return;
