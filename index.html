@@ -26,13 +26,15 @@ body{display:flex;align-items:center;justify-content:center;font-family:Georgia,
 /* On touch devices the controls remain discreetly visible. */
 @media(hover:none){.nav{opacity:.48}.nav:after{width:23px;height:23px}}
 @media(max-width:700px){
- .book{width:min(96vw,58dvh);height:min(92dvh,155vw)}
- .page.left{display:none}
- .gutter{display:none}
- .page.right{box-shadow:none}
+ .book{width:96vw;height:min(68vw,70dvh);max-height:70dvh}
+ .page.left{display:block}
+ .gutter{display:block;background:#0002}
+ .page.left,.page.right{box-shadow:none}
  .page img{object-fit:contain}
- .nav{width:13vw;min-width:34px}
- .nav:after{width:20px;height:20px}
+ .nav{width:10vw;min-width:30px;opacity:.34}
+ .nav:after{width:17px;height:17px}
+ .viewer{touch-action:pan-y pinch-zoom}
+ .page img{-webkit-touch-callout:none}
 }
 @media(prefers-reduced-motion:reduce){.book{transition:none}.nav{transition:none}}
 </style>
@@ -50,7 +52,7 @@ body{display:flex;align-items:center;justify-content:center;font-family:Georgia,
 <script>
 (() => {
   const TOTAL = 128;
-  let page = 1, startX = null, startY = null, busy = false;
+  let page = 1, startX = null, startY = null, busy = false, touchCount = 0;
   const left = document.getElementById('leftPage');
   const right = document.getElementById('rightPage');
   const book = document.getElementById('book');
@@ -58,24 +60,32 @@ body{display:flex;align-items:center;justify-content:center;font-family:Georgia,
   const mobile = () => matchMedia('(max-width:700px)').matches;
   const src = n => `pages/page-${String(n).padStart(3,'0')}.jpg`;
   function render(){
-    if(mobile()){
+    if(mobile() && page===1){
       leftWrap.style.display='none';
-      right.src=src(page);
-      right.alt=`Pagina ${page} di ${TOTAL}`;
+      right.src=src(1);
+      right.alt=`Copertina, pagina 1 di ${TOTAL}`;
     } else {
       leftWrap.style.display='block';
-      left.src=src(page);
-      right.src=src(Math.min(page+1,TOTAL));
-      left.alt=`Pagina ${page} di ${TOTAL}`;
-      right.alt=`Pagina ${Math.min(page+1,TOTAL)} di ${TOTAL}`;
+      // On phones, the cover is shown alone; all following pages form spreads.
+      const first = mobile() ? page : page;
+      const second = Math.min(first+1,TOTAL);
+      left.src=src(first);
+      right.src=src(second);
+      left.alt=`Pagina ${first} di ${TOTAL}`;
+      right.alt=`Pagina ${second} di ${TOTAL}`;
     }
     document.getElementById('prev').style.visibility=page===1?'hidden':'visible';
-    document.getElementById('next').style.visibility=page>=TOTAL-(mobile()?0:1)?'hidden':'visible';
+    document.getElementById('next').style.visibility=page>=(mobile()?TOTAL-1:TOTAL-1)?'hidden':'visible';
   }
   function turn(dir){
     if(busy) return;
-    const step=mobile()?1:2;
-    const target=Math.max(1,Math.min(TOTAL-(step===2?1:0),page+dir*step));
+    let target;
+    if(mobile()){
+      target = page===1 && dir>0 ? 2 : page===2 && dir<0 ? 1 : page+dir*2;
+      target=Math.max(1,Math.min(TOTAL-1,target));
+    } else {
+      target=Math.max(1,Math.min(TOTAL-1,page+dir*2));
+    }
     if(target===page) return;
     busy=true;
     book.style.transition='transform .24s ease, opacity .24s ease';
@@ -94,15 +104,16 @@ body{display:flex;align-items:center;justify-content:center;font-family:Georgia,
     if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();turn(1);}
     if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();turn(-1);}
     if(e.key==='Home'){page=1;render();}
-    if(e.key==='End'){page=mobile()?TOTAL:TOTAL-1;render();}
+    if(e.key==='End'){page=TOTAL-1;render();}
   });
   const viewer=document.querySelector('.viewer');
-  viewer.addEventListener('touchstart',e=>{const t=e.changedTouches[0];startX=t.clientX;startY=t.clientY;},{passive:true});
+  viewer.addEventListener('touchstart',e=>{touchCount=e.touches.length;if(touchCount!==1){startX=startY=null;return;}const t=e.changedTouches[0];startX=t.clientX;startY=t.clientY;},{passive:true});
   viewer.addEventListener('touchend',e=>{
-    if(startX===null)return;
+    if(startX===null || touchCount!==1 || e.changedTouches.length!==1)return;
     const t=e.changedTouches[0], dx=t.clientX-startX, dy=t.clientY-startY;
-    if(Math.abs(dx)>45 && Math.abs(dx)>Math.abs(dy)*1.2) turn(dx<0?1:-1);
-    startX=startY=null;
+    // Only horizontal, intentional swipes turn pages; vertical movement remains natural.
+    if(Math.abs(dx)>40 && Math.abs(dx)>Math.abs(dy)*1.35) turn(dx<0?1:-1);
+    startX=startY=null;touchCount=0;
   },{passive:true});
   let resizeTimer;
   window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(render,100);});
