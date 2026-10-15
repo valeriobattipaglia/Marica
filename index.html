@@ -6,102 +6,80 @@
 <meta name="theme-color" content="#171613">
 <title>LEIB — Fashion, Art & Culture</title>
 <style>
-:root{color-scheme:dark;--paper:#f4f0e8;--ink:#171613}
+:root{color-scheme:dark;--stage:#4b4b49;--ink:#171613}
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#171613}
-body{display:flex;align-items:center;justify-content:center;font-family:Georgia,"Times New Roman",serif}
-.viewer{position:relative;width:100vw;height:100dvh;display:flex;align-items:center;justify-content:center;perspective:1800px;overflow:hidden}
-.book{position:relative;display:flex;align-items:stretch;justify-content:center;width:min(96vw,150vh);height:min(92dvh,68vw);max-height:100dvh;transform-style:preserve-3d;filter:drop-shadow(0 18px 38px #0008);transition:transform .15s ease}
-.book.cover{width:100vw;height:100dvh;max-height:100dvh}
-.book.cover .page.right,.book.cover .page.right img{background:#171613}
-.book.cover .page.right img{object-position:center center}
-.page{position:relative;flex:1;min-width:0;height:100%;background:var(--paper);overflow:hidden;backface-visibility:hidden}
-.page img{display:block;width:100%;height:100%;object-fit:contain;background:var(--paper);user-select:none;-webkit-user-drag:none}
-.page.left{box-shadow:inset -10px 0 14px -15px #000}
-.page.right{box-shadow:inset 10px 0 14px -15px #000}
-.page.left img{object-position:right center}
-.page.right img{object-position:left center}
-.flip-sheet{position:absolute;z-index:5;top:0;right:0;width:50%;height:100%;transform-style:preserve-3d;transform-origin:left center;pointer-events:none;visibility:hidden}
-.flip-sheet img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--paper);backface-visibility:hidden;-webkit-user-drag:none}
-.flip-sheet .flip-back{transform:rotateY(180deg)}
-.flip-sheet:after{content:"";position:absolute;inset:0;z-index:2;background:linear-gradient(90deg,#0000 65%,#0005);opacity:0;transition:opacity .65s;pointer-events:none}
-.flip-sheet.is-turning{visibility:visible;transition:transform .68s cubic-bezier(.35,.02,.22,1)}
-.flip-sheet.is-turning:after{opacity:1}
-.flip-sheet.forward{transform-origin:left center}
-.flip-sheet.forward.is-turning{transform:rotateY(-180deg)}
-.flip-sheet.backward{right:auto;left:0;transform-origin:right center}
-.flip-sheet.backward.is-turning{transform:rotateY(180deg)}
-.flip-sheet.cover-sheet{width:100%;transform-origin:left center}
-.flip-sheet.cover-sheet .flip-front,.flip-sheet.cover-sheet .flip-back{background:#171613}
-.flip-sheet.cover-sheet img{object-position:center}
-.gutter{position:absolute;top:0;bottom:0;left:50%;width:1px;background:#0001;z-index:3;pointer-events:none}
-.book.cover .gutter{display:none}
-.nav{position:fixed;z-index:10;top:0;bottom:0;width:12vw;min-width:42px;max-width:150px;border:0;background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;opacity:.0;transition:opacity .2s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--stage)}
+body{font-family:Georgia,"Times New Roman",serif}
+.viewer{position:relative;width:100vw;height:100dvh;display:grid;place-items:center;overflow:hidden;background:var(--stage)}
+.book-frame{position:relative;width:min(96vw,130dvh);height:min(92dvh,67.88vw);max-height:100dvh;filter:drop-shadow(0 22px 42px #0008)}
+.book{position:absolute;left:0;top:0;width:min(96vw,130dvh);height:min(92dvh,67.88vw);max-height:100dvh;touch-action:none}
+.book-frame.cover{width:min(48vw,65dvh);overflow:hidden}
+.book-frame.cover .book{left:-100%}
+.nav{position:fixed;z-index:10;top:0;bottom:0;width:12vw;min-width:42px;max-width:150px;border:0;background:transparent;color:#fff;display:flex;align-items:center;justify-content:center;opacity:.42;transition:opacity .2s;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .nav:hover,.nav:focus-visible{opacity:.9;outline:none}
 .sound-toggle{position:fixed;z-index:12;right:12px;bottom:12px;border:1px solid #ffffff50;border-radius:999px;padding:8px 12px;background:#171613bb;color:#fff;font:12px system-ui,sans-serif;cursor:pointer;opacity:.72;backdrop-filter:blur(8px)}.sound-toggle:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.page-status{position:fixed;z-index:10;left:50%;bottom:16px;transform:translateX(-50%);color:#fff;font:12px system-ui,sans-serif;text-shadow:0 1px 3px #000;pointer-events:none}
 .nav:after{content:"";width:38px;height:38px;border-top:1.5px solid currentColor;border-right:1.5px solid currentColor;filter:drop-shadow(0 1px 3px #0008)}
 .prev{left:0}.prev:after{transform:rotate(-135deg)}.next{right:0}.next:after{transform:rotate(45deg)}
-/* On touch devices the controls remain discreetly visible. */
-@media(hover:none){.nav{opacity:.48}.nav:after{width:23px;height:23px}}
 @media(max-width:700px){
- .book{width:96vw;height:min(68vw,70dvh);max-height:70dvh}
- .page.left{display:block}
- .gutter{display:block;background:#0002}
- .page.left,.page.right{box-shadow:none}
- .page img{object-fit:contain}
+ .book-frame,.book{width:min(96vw,70dvh);height:min(92dvh,133vw);max-height:92dvh}
+ .book-frame.cover{width:min(96vw,70dvh)}
+ .book-frame.cover .book{left:0}
  .nav{width:10vw;min-width:30px;opacity:.34}
  .nav:after{width:17px;height:17px}
- .viewer{touch-action:pan-y pinch-zoom}
- .page img{-webkit-touch-callout:none}
 }
-@media(prefers-reduced-motion:reduce){.book,.flip-sheet.is-turning{transition:none}.nav{transition:none}}
+@media(prefers-reduced-motion:reduce){.nav{transition:none}}
 </style>
 </head>
 <body>
 <main class="viewer" aria-label="Rivista LEIB">
-  <div class="book" id="book">
-    <div class="page left"><img id="leftPage" alt="Pagina della rivista LEIB" draggable="false"></div>
-    <div class="page right"><img id="rightPage" alt="Pagina della rivista LEIB" draggable="false"></div>
-    <div class="gutter"></div>
-    <div class="flip-sheet" id="flipSheet" aria-hidden="true"><img class="flip-front" alt="" draggable="false"><img class="flip-back" alt="" draggable="false"></div>
+  <div class="book-frame cover" id="bookFrame">
+    <div class="book" id="book" aria-label="Pagine della rivista LEIB"></div>
   </div>
   <button class="nav prev" id="prev" aria-label="Pagina precedente" title="Pagina precedente"></button>
   <button class="nav next" id="next" aria-label="Pagina successiva" title="Pagina successiva"></button>
+  <output class="page-status" id="pageStatus" aria-live="polite">1 / 128</output>
   <button class="sound-toggle" id="soundToggle" type="button" aria-pressed="false">Suono: off</button>
 </main>
+<script src="vendor/page-flip.browser.min.js"></script>
 <script>
 (() => {
   const TOTAL = 128;
-  let page = 1, startX = null, startY = null, busy = false, touchCount = 0;
-  let soundEnabled = false, multiTouchSeen = false, pinchZoomed = false;
+  let soundEnabled = false;
   let soundContext = null;
-  const left = document.getElementById('leftPage');
-  const right = document.getElementById('rightPage');
+  const bookFrame = document.getElementById('bookFrame');
   const book = document.getElementById('book');
-  const leftWrap = left.parentElement;
-  const flipSheet = document.getElementById('flipSheet');
-  const flipFront = flipSheet.querySelector('.flip-front');
-  const flipBack = flipSheet.querySelector('.flip-back');
-  const mobile = () => matchMedia('(max-width:700px)').matches;
   const src = n => `pages/page-${String(n).padStart(3,'0')}.jpg`;
-  function render(){
-    book.classList.toggle('cover',page===1);
-    if(page===1){
-      leftWrap.style.display='none';
-      right.src=src(1);
-      right.alt=`Copertina, pagina 1 di ${TOTAL}`;
-    } else {
-      leftWrap.style.display='block';
-      // On phones, the cover is shown alone; all following pages form spreads.
-      const first = mobile() ? page : page;
-      const second = Math.min(first+1,TOTAL);
-      left.src=src(first);
-      right.src=src(second);
-      left.alt=`Pagina ${first} di ${TOTAL}`;
-      right.alt=`Pagina ${second} di ${TOTAL}`;
-    }
-    document.getElementById('prev').style.visibility=page===1?'hidden':'visible';
-    document.getElementById('next').style.visibility=page>=(mobile()?TOTAL-1:TOTAL-1)?'hidden':'visible';
+  const pageFlip = new St.PageFlip(book,{
+    width:700,
+    height:990,
+    size:'stretch',
+    minWidth:315,
+    maxWidth:1400,
+    minHeight:420,
+    maxHeight:1200,
+    autoSize:false,
+    showCover:true,
+    usePortrait:true,
+    flippingTime:650,
+    drawShadow:true,
+    maxShadowOpacity:.48,
+    mobileScrollSupport:false,
+    swipeDistance:30,
+    clickEventForward:false,
+    disableFlipByClick:true,
+    useMouseEvents:true
+  });
+  function updateControls(index=pageFlip.getCurrentPageIndex()){
+    const portrait=pageFlip.getOrientation()==='portrait';
+    const last=portrait?TOTAL-1:TOTAL-2;
+    document.getElementById('prev').style.visibility=index===0?'hidden':'visible';
+    document.getElementById('next').style.visibility=index>=last?'hidden':'visible';
+    document.getElementById('pageStatus').textContent=index===0?'1 / 128':portrait?`${index+1} / 128`:`${index+1}-${Math.min(index+2,TOTAL)} / 128`;
+  }
+  function syncBookSize(index){
+    const cover=index===0;
+    bookFrame.classList.toggle('cover',cover);
   }
   function playPageSound(){
     if(!soundEnabled) return;
@@ -122,10 +100,6 @@ body{display:flex;align-items:center;justify-content:center;font-family:Georgia,
       source.connect(filter); filter.connect(gain); gain.connect(soundContext.destination); source.start(now); source.stop(now+0.08);
     } catch (_) {}
   }
-  function isZoomed(){
-    const vv = window.visualViewport;
-    return pinchZoomed || (vv && vv.scale > 1.02);
-  }
   document.getElementById('soundToggle').addEventListener('click',()=>{
     soundEnabled=!soundEnabled;
     const button=document.getElementById('soundToggle');
@@ -133,78 +107,27 @@ body{display:flex;align-items:center;justify-content:center;font-family:Georgia,
     button.setAttribute('aria-pressed',String(soundEnabled));
     if(soundEnabled) playPageSound();
   });
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize',()=>{pinchZoomed=window.visualViewport.scale>1.02;});
-    window.visualViewport.addEventListener('scroll',()=>{if(window.visualViewport.scale>1.02) pinchZoomed=true;});
-  }
-  function turn(dir){
-    if(busy) return;
-    let target;
-    target = page===1 && dir>0 ? 2 : page===2 && dir<0 ? 1 : page+dir*2;
-    target=Math.max(1,Math.min(TOTAL-1,target));
-    if(target===page) return;
-    busy=true;
+  pageFlip.on('flip',event=>{
+    syncBookSize(event.data);
+    updateControls(event.data);
     playPageSound();
-    flipSheet.className=`flip-sheet ${dir>0?'forward':'backward'}${page===1?' cover-sheet':''}`;
-    flipFront.src=dir>0?right.src:left.src;
-    flipBack.src=src(dir>0?(page===1?2:page+2):(page===2?1:page-1));
-    flipSheet.style.visibility='visible';
-    requestAnimationFrame(()=>requestAnimationFrame(()=>flipSheet.classList.add('is-turning')));
-    setTimeout(()=>{
-      page=target;
-      render();
-      flipSheet.className='flip-sheet';
-      flipSheet.style.visibility='hidden';
-      flipSheet.style.transform='none';
-      busy=false;
-    },700);
-  }
-  document.getElementById('next').addEventListener('click',()=>turn(1));
-  document.getElementById('prev').addEventListener('click',()=>turn(-1));
+  });
+  pageFlip.on('changeOrientation',()=>updateControls());
+  pageFlip.on('init',event=>{
+    syncBookSize(event.data.page);
+    updateControls(event.data.page);
+  });
+  pageFlip.loadFromImages(Array.from({length:TOTAL},(_,index)=>src(index+1)));
+  document.getElementById('next').addEventListener('click',()=>pageFlip.flipNext('top'));
+  document.getElementById('prev').addEventListener('click',()=>pageFlip.flipPrev('top'));
   document.addEventListener('keydown',e=>{
-    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();turn(1);}
-    if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();turn(-1);}
-    if(e.key==='Home'){page=1;render();}
-    if(e.key==='End'){page=TOTAL-1;render();}
+    if(e.target.closest('button,input,textarea,select')) return;
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();pageFlip.flipNext('top');}
+    if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();pageFlip.flipPrev('top');}
+    if(e.key==='Home') pageFlip.turnToPage(0);
+    if(e.key==='End') pageFlip.turnToPage(TOTAL-1);
   });
-  const viewer=document.querySelector('.viewer');
-  viewer.addEventListener('touchstart',e=>{
-    touchCount=e.touches.length;
-    if(touchCount!==1){multiTouchSeen=true;startX=startY=null;return;}
-    // If zoomed, gestures belong to reading/panning, not page navigation.
-    if(isZoomed() || multiTouchSeen){startX=startY=null;return;}
-    const t=e.changedTouches[0];startX=t.clientX;startY=t.clientY;
-  },{passive:true});
-  viewer.addEventListener('touchend',e=>{
-    if(e.touches.length===0 && multiTouchSeen){
-      multiTouchSeen=false;
-      if(window.visualViewport && window.visualViewport.scale<=1.02) pinchZoomed=false;
-    }
-    if(startX===null || touchCount!==1 || e.changedTouches.length!==1 || isZoomed() || multiTouchSeen){startX=startY=null;touchCount=0;return;}
-    const t=e.changedTouches[0], dx=t.clientX-startX, dy=t.clientY-startY;
-    const bounds=viewer.getBoundingClientRect();
-    if(Math.abs(dx)<18 && Math.abs(dy)<18 && startY<bounds.height*.22){
-      if(startX<bounds.width*.2) turn(-1);
-      else if(startX>bounds.width*.8) turn(1);
-      startX=startY=null;touchCount=0;return;
-    }
-    // Require a clear, deliberate horizontal swipe; vertical scroll and zoom/pan never turn pages.
-    if(Math.abs(dx)>55 && Math.abs(dx)>Math.abs(dy)*1.6) turn(dx<0?1:-1);
-    startX=startY=null;touchCount=0;
-  },{passive:true});
-  let lastTouchAt=0;
-  viewer.addEventListener('touchstart',()=>{lastTouchAt=Date.now();},{passive:true});
-  viewer.addEventListener('click',e=>{
-    if(Date.now()-lastTouchAt<500 || e.target.closest('button')) return;
-    const bounds=viewer.getBoundingClientRect();
-    const x=e.clientX-bounds.left, y=e.clientY-bounds.top;
-    if(y<bounds.height*.22 && x<bounds.width*.2) turn(-1);
-    else if(y<bounds.height*.22 && x>bounds.width*.8) turn(1);
-  });
-  viewer.addEventListener('touchcancel',()=>{startX=startY=null;touchCount=0;multiTouchSeen=false;},{passive:true});
-  let resizeTimer;
-  window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(render,100);});
-  render();
+  updateControls();
 })();
 </script>
 </body>
